@@ -404,7 +404,25 @@ class ServerCheckJob implements ShouldBeEncrypted, ShouldQueue
                 return data_get($value, 'Name') === '/coolify-proxy';
             }
         })->first();
-        if (! $foundProxyContainer) {
+
+        if (!$foundProxyContainer) {
+            $this->server->proxy->status = 'Proxy Exited';
+            $this->server->save();
+        } else {
+            $containerStatus = data_get($foundProxyContainer, 'State.Status');
+            if ($containerStatus === 'running') {
+                $this->server->proxy->status = 'Proxy Running';
+            } elseif ($this->server->proxy->force_stop) {
+                $this->server->proxy->status = 'Proxy Stopped';
+            } else {
+                $this->server->proxy->status = 'Proxy Exited';
+            }
+            $this->server->save();
+        }
+
+        $this->dispatch('proxyStatusUpdated');
+
+        if ($this->server->proxy->status === 'Proxy Exited') {
             try {
                 $shouldStart = CheckProxy::run($this->server);
                 if ($shouldStart) {
@@ -414,9 +432,9 @@ class ServerCheckJob implements ShouldBeEncrypted, ShouldQueue
             } catch (\Throwable $e) {
                 ray($e);
             }
-        } else {
-            $this->server->proxy->status = data_get($foundProxyContainer, 'State.Status');
-            $this->server->save();
+        }
+
+        if ($this->server->proxy->status === 'Proxy Running') {
             $connectProxyToDockerNetworks = connectProxyToNetworks($this->server);
             instant_remote_process($connectProxyToDockerNetworks, $this->server, false);
         }

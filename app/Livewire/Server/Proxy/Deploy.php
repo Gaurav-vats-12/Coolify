@@ -17,6 +17,8 @@ class Deploy extends Component
     public ?string $currentRoute = null;
 
     public ?string $serverIp = null;
+    
+    public $proxyStatus = '';
 
     public function getListeners()
     {
@@ -24,7 +26,7 @@ class Deploy extends Component
 
         return [
             "echo-private:team.{$teamId},ProxyStatusChanged" => 'proxyStarted',
-            'proxyStatusUpdated',
+            'proxyStatusRefreshed',
             'traefikDashboardAvailable',
             'serverRefresh' => 'proxyStatusUpdated',
             'checkProxy',
@@ -40,6 +42,13 @@ class Deploy extends Component
             $this->serverIp = $this->server->ip;
         }
         $this->currentRoute = request()->route()->getName();
+        $this->updateProxyStatus();
+    }
+
+    public function updateProxyStatus()
+    {
+        $this->server->refresh();
+        $this->proxyStatus = $this->server->proxy->status;
     }
 
     public function traefikDashboardAvailable(bool $data)
@@ -50,12 +59,12 @@ class Deploy extends Component
     public function proxyStarted()
     {
         CheckProxy::run($this->server, true);
-        $this->dispatch('proxyStatusUpdated');
+        $this->updateProxyStatus();
     }
 
     public function proxyStatusUpdated()
     {
-        $this->server->refresh();
+        $this->updateProxyStatus();
     }
 
     public function restart()
@@ -103,7 +112,7 @@ class Deploy extends Component
                     'docker rm -f coolify-proxy',
                 ], $this->server);
             }
-            $this->server->proxy->status = 'exited';
+            $this->server->proxy->status = $forceStop ? 'Proxy Stopped' : 'Proxy Exited';
             $this->server->proxy->force_stop = $forceStop;
             $this->server->save();
             $this->dispatch('proxyStatusUpdated');
