@@ -85,6 +85,7 @@ class StartClickhouse
                     'fluentd-address' => 'tcp://127.0.0.1:24224',
                     'fluentd-async' => 'true',
                     'fluentd-sub-second-precision' => 'true',
+                    'env' => 'COOLIFY_APP_NAME,COOLIFY_PROJECT_NAME,COOLIFY_SERVER_IP,COOLIFY_ENVIRONMENT_NAME',
                 ],
             ];
         }
@@ -166,6 +167,21 @@ class StartClickhouse
         if ($environment_variables->filter(fn($env) => str($env)->contains('CLICKHOUSE_ADMIN_PASSWORD'))->isEmpty()) {
             $environment_variables->push("CLICKHOUSE_ADMIN_PASSWORD={$this->database->clickhouse_admin_password}");
         }
+
+        // TODO: move this in a shared function
+        if ($environment_variables->where('key', 'COOLIFY_APP_NAME')->isEmpty()) {
+            $environment_variables->push("COOLIFY_APP_NAME={$this->database->name}");
+        }
+        if ($environment_variables->where('key', 'COOLIFY_SERVER_IP')->isEmpty()) {
+            $environment_variables->push("COOLIFY_SERVER_IP={$this->database->destination->server->ip}");
+        }
+        if ($environment_variables->where('key', 'COOLIFY_ENVIRONMENT_NAME')->isEmpty()) {
+            $environment_variables->push("COOLIFY_ENVIRONMENT_NAME={$this->database->environment->name}");
+        }
+        if ($environment_variables->where('key', 'COOLIFY_PROJECT_NAME')->isEmpty()) {
+            $environment_variables->push("COOLIFY_PROJECT_NAME={$this->database->project()->name}");
+        }
+
 
         return $environment_variables->all();
     }

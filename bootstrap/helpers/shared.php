@@ -2056,6 +2056,7 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                             'fluentd-address' => 'tcp://127.0.0.1:24224',
                             'fluentd-async' => 'true',
                             'fluentd-sub-second-precision' => 'true',
+                            'env' => 'COOLIFY_APP_NAME,COOLIFY_PROJECT_NAME,COOLIFY_SERVER_IP,COOLIFY_ENVIRONMENT_NAME',
                         ],
                     ]);
                 }
@@ -2105,6 +2106,21 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                     }
                 }
                 $parsedServiceVariables->put('COOLIFY_CONTAINER_NAME', "$serviceName-{$resource->uuid}");
+
+                // TODO: move this in a shared function
+                if (! $parsedServiceVariables->has('COOLIFY_APP_NAME')) {
+                    $parsedServiceVariables->put('COOLIFY_APP_NAME', $resource->name);
+                }
+                if (! $parsedServiceVariables->has('COOLIFY_SERVER_IP')) {
+                    $parsedServiceVariables->put("COOLIFY_SERVER_IP", $resource->destination->server->ip);
+                }
+                if (! $parsedServiceVariables->has('COOLIFY_ENVIRONMENT_NAME')) {
+                    $parsedServiceVariables->put("COOLIFY_ENVIRONMENT_NAME", $resource->environment->name);
+                }
+                if (! $parsedServiceVariables->has('COOLIFY_PROJECT_NAME')) {
+                    $parsedServiceVariables->put('COOLIFY_PROJECT_NAME', $resource->project()->name);
+                }
+
                 $parsedServiceVariables = $parsedServiceVariables->map(function ($value, $key) use ($envs_from_coolify) {
                     if (! str($value)->startsWith('$')) {
                         $found_env = $envs_from_coolify->where('key', $key)->first();
@@ -2819,6 +2835,7 @@ function parseDockerComposeFile(Service|Application $resource, bool $isNew = fal
                         'fluentd-address' => 'tcp://127.0.0.1:24224',
                         'fluentd-async' => 'true',
                         'fluentd-sub-second-precision' => 'true',
+                        'env' => 'COOLIFY_APP_NAME,COOLIFY_PROJECT_NAME,COOLIFY_SERVER_IP,COOLIFY_ENVIRONMENT_NAME',
                     ],
                 ]);
             }
